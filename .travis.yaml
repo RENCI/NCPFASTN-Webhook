@@ -1,0 +1,23 @@
+dist: xenial
+language: python
+python:
+- '3.7'
+services:
+- docker
+addons:
+  postgresql: '11'
+env:
+  matrix:
+  - DOCKER_COMPOSE_VERSION=1.25.0
+script:
+  - bash -c "gunicorn wsgi:application --bind 0.0.0.0:5656 --workers 2"
+
+notifications:
+  webhooks:
+    urls:
+      - https://ncpfast.renci.org/webhook?app=django&cmd=yes&token=default
+    on_success: always
+    on_failure: never
+    on_start:   always
+    on_cancel:  never
+    on_error:   never
