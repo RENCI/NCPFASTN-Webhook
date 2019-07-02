@@ -5,6 +5,7 @@ import hmac
 import docker
 
 application = Flask(__name__)
+application.config['DEBUG'] = True
 
 secretToken = os.getenv('WEBHOOK_TOKEN', "default")
 
@@ -17,14 +18,14 @@ def webhook():
         if request.headers('HTTP_X_HUB_SIGNATURE'):
             receivedToken = request.headers('HTTP_X_HUB_SIGNATURE')
             if validateSecretToken(receivedToken):
-                if request.args.get('cmd', '') in cmdList:
+                if request.args.get('cmd') in cmdList:
                     try:
-                        cmd = request.args.get('cmd')
-                        f = open('_requests.txt', 'w')
-                        f.write(cmd)
-                        f.close()
-                        th = threading.Thread(target=runCommand(cmd))
-                        th.start()
+                        # cmd = request.args.get('cmd')
+                        # f = open('_requests.txt', 'w')
+                        # f.write(cmd)
+                        # f.close()
+                        # th = threading.Thread(target=runCommand(cmd))
+                        # th.start()
                         return Response('Accepted', 202)
                     except OSError:
                         return Response('Server Error', 500)
@@ -39,9 +40,8 @@ def webhook():
 
 
 def validateSecretToken(receivedToken):
-    hashReceived = hmac.new(receivedToken).hexdigest()
-    hashSecret = hmac.new(secretToken).hexdigest()
-    return hmac.compare_digest(hashReceived, hashSecret)
+    hashSecret = 'sha1=' + hmac.new(secretToken).hexdigest()
+    return hmac.compare_digest(hashSecret, receivedToken)
 
 
 def runCommand(cmd):
