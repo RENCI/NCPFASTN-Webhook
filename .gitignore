@@ -2,3 +2,6 @@
 .idea/
 __pycache__/
 venv/
+/gunicorn-start.sh
+/gunicorn-stop.sh
+.env
