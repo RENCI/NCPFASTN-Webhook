@@ -11,8 +11,8 @@ application = Flask(__name__)
 application.config['DEBUG'] = True
 secretToken = os.getenv('WEBHOOK_TOKEN', 'change_me___preferably_set_in_a_.env_file')
 
-# list command name and the actual bash commands you want to run
-# do not include any sensitive information as this list will be displayed for assistance
+# list command name which is a query param in the URL you call and the actual bash commands you want to run,
+# and the working directory for the command.
 cmdList = {
     'rebuild-all':
         {
