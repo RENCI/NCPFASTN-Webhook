@@ -43,7 +43,7 @@ cmdList = {
 @application.route('/webhook', methods=['POST', 'GET'])
 def webhook():
     myLogger = logging.LoggerAdapter(logging.getLogger('webhook-listener'),
-                                     {'trigger-id': uuid.uuid4()})
+                                     {'trigger-id': str(uuid.uuid4())})
     if request.method != 'POST':
         myLogger.error('Invalid Method on Webhook')
         return Response('Invalid Method', 405)
