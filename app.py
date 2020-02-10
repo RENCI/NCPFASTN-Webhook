@@ -56,11 +56,7 @@ def getBranchOrRelease(payload):
     release = payload.get('release', False)
     action = payload.get('action', False)
     myLogger.debug(
-        '*Determining Type of Webhook*' +
-        ' | host: ' + host +
-        ' | ref: ' + ref +
-        ' | release: ' + release +
-        ' | action: ' + action
+        '*Determining Type of Webhook*'
         )
 
     # this is pretty inefficient code, but doesn't really matter for this purpose
@@ -121,7 +117,7 @@ def webhook():
     #     myLogger.error('No Secret Token Provided in Header or Token Provided as Query Parameter')
     #     return Response('No Secret Token Provided in Header or Token Provided as Query Parameter', 401)
 
-    myLogger.info('Request Received: ' + str(request) + ' ' + str(request.args) + request.get_json())
+    myLogger.info('Request Received: ' + str(request) + ' ' + str(request.args) + str(request.get_json()))
 
     if request.args.get('token'):
         token = request.args.get('token')
