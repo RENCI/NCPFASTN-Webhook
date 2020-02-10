@@ -1,6 +1,5 @@
 import hmac
 import os.path
-import pprint as pp
 import subprocess
 import threading
 import graypy
@@ -29,6 +28,7 @@ queryToken = os.getenv('QUERY_TOKEN', 'change_me___preferably_set_in_a_.env_file
 
 myLogger.debug('Token: ' + secretToken + ' Type: ' + str(type(secretToken)))
 
+
 # handler = logging.StreamHandler(sys.stdout)
 # handler.setLevel(logging.DEBUG)
 # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -37,7 +37,6 @@ myLogger.debug('Token: ' + secretToken + ' Type: ' + str(type(secretToken)))
 
 # list command name which is a query param in the URL you call and the actual bash commands you want to run,
 # and the working directory for the command.
-
 
 
 def checkConstraints(cmdDict, payload):
@@ -51,26 +50,47 @@ def checkConstraints(cmdDict, payload):
 
 
 def getBranchOrRelease(payload):
+    # build criteria and branch name from GitHub webhook payload
     host = socket.gethostname().split('.')[0]
     ref = payload.get('ref', False)
     release = payload.get('release', False)
     action = payload.get('action', False)
-    print('host', host)
-    print('ref', ref)
-    print('action', release)
+    myLogger.debug(
+        '*Determining Type of Webhook*' +
+        ' | host: ' + host +
+        ' | ref: ' + ref +
+        ' | release: ' + release +
+        ' | action: ' + action
+        )
 
-    if ref and host == 'ncpfast-dev':
+    # this is pretty inefficient code, but doesn't really matter for this purpose
+
+    # criteria for dev build
+    if ref and host == 'ncpfast-dev':  # only push triggers will have the 'ref' element
         branch = os.path.split(ref)[1]
+
+    # criteria for stage build
     elif release and action and host == 'ncpfast-stage':
         if not release['draft']:
-            branch = False
+            branch = False  # don't build unless is draft
         elif action == 'published':
-            branch = False
+            branch = False  # don't build if action is published
         else:
             branch = release["tag_name"]
+
+    # criteria for prod build
+    elif release and action and host == 'ncpfast':
+        if release['draft']:  # don't build drafts
+            branch = False
+        elif action == 'published':  # only build if published
+            branch = release["tag_name"]
+        else:
+            branch = False
+
     else:
         branch = False
-    print('branch', branch)
+
+    myLogger.debug('Determination (Branch or False): ' + branch)
     return branch
 
 
@@ -93,7 +113,6 @@ def runCommand(command):
 # flask route/server
 @application.route('/webhook', methods=['POST', 'GET'])
 def webhook():
-
     # if request.method != 'POST':
     #     myLogger.error('Invalid Method on Webhook')
     #     return Response('Invalid Method', 405)
@@ -102,7 +121,7 @@ def webhook():
     #     myLogger.error('No Secret Token Provided in Header or Token Provided as Query Parameter')
     #     return Response('No Secret Token Provided in Header or Token Provided as Query Parameter', 401)
 
-    myLogger.debug('Request Received: ' + str(request) + ' ' + str(request.args))
+    myLogger.info('Request Received: ' + str(request) + ' ' + str(request.args) + request.get_json())
 
     if request.args.get('token'):
         token = request.args.get('token')
@@ -124,23 +143,21 @@ def webhook():
         myLogger.error('Webhook: Invalid Token')
         return Response('Unauthorized Authentication Token', 401)
 
-    myLogger.debug('Just before Try stmt')
-
     if not request.get_json():
         myLogger.error('Webhook: Payload empty!')
         return Response('Payload (body) empty! ', 510)
 
-    payload = request.get_json()
-    branch = getBranchOrRelease(payload)
+    payload = request.get_json()  # parse webhook request body payload
+    branch = getBranchOrRelease(payload)  # validate payload and return the branch to build from or false
 
     if not branch:
         myLogger.error('Webhook: Payload Error or Build Criteria Not Met')
         return Response('Error parsing the hook payload included below, or this was a draft release or a non-dev '
-                        'branch commit.\n\n' + str(payload), 510)
+                        'branch commit and did not trigger a build.\n\n' + str(payload), 510)
 
     try:
         command = {
-            'script': 'export BRANCH=' + branch + ' && docker-compose build --no-cache && docker-compose up -d',
+            'script': 'export DH_BRANCH=' + branch + ' && docker-compose build --no-cache && docker-compose up -d',
             'dir': '/srv/datahub',
             }
         th = threading.Thread(target=runCommand, args=(command,), daemon=True)
@@ -152,5 +169,3 @@ def webhook():
     except (IOError, SystemError) as err:
         myLogger.error('Server Error: ' + err.strerror)
         return Response('Server Error: ' + err.strerror, 500)
-
-
